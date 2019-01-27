@@ -109,12 +109,35 @@ app.post("/api/exercise/new-user", function(req, res) {
 
 //Outputs a list of all Users.
 app.get("/api/exercise/users", function(req, res) {
-	User.find({}, function(err, users) {
-		res.send(users.reduce(function(userMap, item) {
-			userMap[item.id] = item;
-			return userMap;
-		}, {}));
-	});
+	// User.find({}, function(err, users) {
+	// 	res.send(users.reduce(function(userMap, item) {
+	// 		userMap[item.id] = item;
+	// 		return userMap;
+	// 	}, {}));
+	// });
+
+	findAllUsers(function(err, users) { //Finds all users in the database.
+		if (err) {
+			console.log("Error: ", err);
+			res.json("Error: ", err);
+		} else {
+			console.log("Success: ", users);
+			res.json(users);
+			//res.json(users.map(function(item) { return item["username", "_id"]; }));
+		}
+	})
+
+	//   User.find({}, function(err, users) {
+	//     if (err) {
+	// 				console.log("Error: ", err);
+	// 				res.json("Error: ", err);
+	// 			} else {
+	//         console.log("Success: ", users);
+	//         //res.json(users);
+
+	//         //res.json(users.map(function(item) { return item["username", "_id"]; }));
+	//       }
+	// 	});
 });
 
 
@@ -188,7 +211,6 @@ app.post("/api/exercise/add", function(req, res) {
 				//           "duration": userInput.dur,
 				//           "_id": userInput.user_id,
 				//           "date": userInput.date
-
 				// 				})
 				//       }
 				//			});
@@ -248,12 +270,39 @@ app.get('/api/exercise/:param1', function(req, res) {
 	//       }
 	//   });
 
+	// if (!user_id) { //User input is blank.
+	// 	res.send("unknown userId: " + user_id);
+	// }
 
-	if (!user_id) { //User input is blank.
-		res.send("unknown userId: " + user_id);
-	}
 
-	res.send('user ' + user_id);
+	findUserById(user_id, function(err, oldDoc) { //Checks if user input is in database already as user_id.
+		if (err) {
+			console.log("Database error: ", err);
+			res.json("Database error: ", err);
+		}
+
+		if (oldDoc == null) { //The user_id is not in database.
+			console.log("There is not user with that name in the database.");
+			res.send('unknown userId');
+		} else { //The user_id is in database.
+			console.log("That user exists: ", oldDoc);
+
+			// countLogsById(user_id, function(err, count) { //Checks if user input is in database already as user_id.
+			// if (err) {
+			// 	console.log("Database error: ", err);
+			// 	res.json("Database error: ", err);
+			// }
+			//console.log("My count is: ", count);
+
+			res.json({
+				_id: oldDoc._id,
+				username: oldDoc.username,
+				count: oldDoc.log.length,
+				log: oldDoc.log
+			});
+			// })
+		}
+	})
 })
 
 
@@ -296,6 +345,21 @@ function makeid() { //Creates a random 9-digit string for user_id.
 }
 
 
+var findAllUsers = function(done) { //Return all users in database.
+	User.find({}, {
+		username: 1,
+		_id: 1
+	}, (err, data) => { //Instead of returning full records, only returns username and id.
+		if (err) { //Database error.
+			console.log("Database error: ", err);
+			done(err);
+		}
+		console.log("Search was completed: ", data);
+		done(null, data);
+	})
+};
+
+
 var findUserById = function(userId, done) { //Check the database if userId exists.
 	User.findOne({
 		_id: userId
@@ -311,20 +375,31 @@ var findUserById = function(userId, done) { //Check the database if userId exist
 
 
 var findAndUpdate = function(userInput, updatedLog, done) {
-	User.findOneAndUpdate(
-
-		{
-			_id: userInput.user_id
-		}, {
-			log: updatedLog
-		}, (err, data) => {
-			if (err) {
-				done(err);
-			}
-			done(null, data);
+	User.findOneAndUpdate({
+		_id: userInput.user_id
+	}, {
+		log: updatedLog
+	}, (err, data) => {
+		if (err) {
+			done(err);
 		}
-	)
+		done(null, data);
+	})
 };
+
+
+// var countLogsById = function(userId, done) { //Counts how many logs exist for the user.
+// 	User.count({
+// 		_id: userId
+// 	}, (err, data) => {
+// 		if (err) { //Database error.
+// 			console.log("Database error: ", err);
+// 			done(err);
+// 		}
+// 		console.log("Search was completed: ", data);
+// 		done(null, data);
+// 	})
+// };
 
 
 // Not found middleware
